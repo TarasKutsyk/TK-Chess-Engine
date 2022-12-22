@@ -1,0 +1,19 @@
+{
+  "name": "chessai",
+  "version": "1.0.0",
+  "description": "Taras Kutsyk Course Project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "author": "Taras Kutsyk",
+  "license": "ISC",
+  "dependencies": {
+    "@chrisoakman/chessboardjs": "^1.0.0",
+    "chess.js": "^1.0.0-alpha.0"
+  },
+  "devDependencies": {
+    "@types/chess.js": "^0.13.4"
+  }
+}
