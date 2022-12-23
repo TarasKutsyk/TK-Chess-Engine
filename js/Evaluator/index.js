@@ -57,8 +57,6 @@ export class Evaluator {
         // account for piece activity when capturing pieces
         evalChange += this.getSquareValue(lastMove.captured, lastMove.to, !isWhite);
       }
-
-      //TODO: check for castling
     }
 
     // update the evaluation from the white's perspective

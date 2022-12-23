@@ -112,7 +112,6 @@ export class Engine {
     }
 
     let bestMoveEval = isWhite ? -Infinity : Infinity;
-    //TODO: get rid of bestMove var here
     let bestMove = null;
 
     let possibleMoves = this.game.moves({verbose: true});
@@ -145,6 +144,7 @@ export class Engine {
           alpha = moveEval;
         }
         if (beta <= alpha) {
+          // black has a better move
           break;
         }
       } else { // black's move
@@ -156,6 +156,7 @@ export class Engine {
           beta = moveEval;
         }
         if (beta <= alpha) {
+          // white has a better move
           break;
         }
       }
