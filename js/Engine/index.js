@@ -19,6 +19,7 @@ export class Engine {
 
   minimaxSearch(isWhite, depth = this.depth) {
     const currentEval = this.evaluator.getCurrentEval();
+    const currentPieceCounts = this.evaluator.getPieceCounts();
 
     // If there is no depth left, return evaluation of the position,
     // or continue the search using Quiescence Search, depending on the engine configuration
@@ -36,6 +37,10 @@ export class Engine {
     // generate all the legal moves, using chess.js
     const possibleMoves = this.game.moves({verbose: true});
     if (!possibleMoves.length) {
+      if (this.game.isDraw() || this.game.isThreefoldRepetition() || this.game.isStalemate()) {
+        return 0;
+      }
+
       return currentEval;
     }
     // loop over all legal moves
@@ -62,6 +67,8 @@ export class Engine {
       // undo the board and evaluation updates, to continue the search at the next children node (next legal move)
       this.game.undo();
       this.evaluator.setCurrentEval(currentEval);
+      // reset the piece counts
+      this.evaluator.setPieceCounts(currentPieceCounts);
     }
     // if this is a top-level call, return the best move
     if (depth === this.depth) {
@@ -75,8 +82,13 @@ export class Engine {
     let captureMoves = this.game.moves({verbose: true})
       .filter(move => move.captured);
     const currentEval = this.evaluator.getCurrentEval();
+    const currentPieceCounts = this.evaluator.getPieceCounts();
 
-    if (captureMoves.length === 0) {
+    if (!captureMoves.length) {
+      if (this.game.isDraw() || this.game.isThreefoldRepetition() || this.game.isStalemate()) {
+        return 0;
+      }
+
       return currentEval;
     }
 
@@ -96,6 +108,7 @@ export class Engine {
 
       this.game.undo();
       this.evaluator.setCurrentEval(currentEval);
+      this.evaluator.setPieceCounts(currentPieceCounts);
     }
 
     return bestMoveEval;
@@ -103,6 +116,7 @@ export class Engine {
 
   alphaBetaSearch(isWhite, alpha = -Infinity, beta = Infinity, depth = this.depth) {
     const currentEval = this.evaluator.getCurrentEval();
+    const currentPieceCounts = this.evaluator.getPieceCounts();
 
     if (depth === 0) {
       if (this.quiescence) {
@@ -116,12 +130,16 @@ export class Engine {
 
     let possibleMoves = this.game.moves({verbose: true});
 
+    if (!possibleMoves.length) {
+      if (this.game.isDraw() || this.game.isThreefoldRepetition() || this.game.isStalemate()) {
+        return 0;
+      }
+
+      return currentEval;
+    }
     // Use move ordering (by default) to order moves from more likely to be good, to less likely
     if (this.moveOrdering) {
       possibleMoves = orderMoves(possibleMoves);
-    }
-    if (!possibleMoves.length) {
-      return currentEval;
     }
 
     for (const currentMove of possibleMoves) {
@@ -134,6 +152,8 @@ export class Engine {
       this.game.undo();
       // undo evaluation change
       this.evaluator.setCurrentEval(currentEval);
+      // reset the piece counts
+      this.evaluator.setPieceCounts(currentPieceCounts);
 
       if (isWhite) {
         if (moveEval > bestMoveEval) {
@@ -169,10 +189,12 @@ export class Engine {
     return bestMoveEval;
   }
 
-  alphaBetaNegamax(isWhite, alpha= -Infinity, beta= Infinity, depthleft = this.depth) {
+  alphaBetaScore(isWhite, depth, alpha, beta)  {
+    // function for calculating top-level moves evaluation (rather than returning the best move, like the one below does)
     let currentWhiteEval = this.evaluator.getCurrentEval();
+    const currentPieceCounts = this.evaluator.getPieceCounts();
 
-    if (depthleft === 0) {
+    if (depth === 0) {
       if (this.quiescence) {
         return this.quiescenceSearchAlphaBeta(isWhite, alpha, beta);
       }
@@ -181,6 +203,59 @@ export class Engine {
       // return evaluation relative to side to move
       return currentWhiteEval * sign;
     }
+
+    let possibleMoves = this.game.moves({verbose: true});
+
+    if (!possibleMoves.length) {
+      if (this.game.isDraw() || this.game.isThreefoldRepetition() || this.game.isStalemate()) {
+        return 0;
+      }
+
+      return (isWhite ? 1 : -1) * currentWhiteEval;
+    }
+    // Use move ordering (by default) to order moves from more likely to be good, to less likely
+    if (this.moveOrdering) {
+      possibleMoves = orderMoves(possibleMoves);
+    }
+
+    for (const move of possibleMoves) {
+      // make the current move on the board
+      this.game.move(move);
+      // (lazy) update the evaluation according to the latest move
+      this.evaluator.updateEval(move, isWhite);
+
+      // because of the relative evaluation being used, the win for one player is negative the win for other player
+      // similarly, the alpha and beta parameters change signs for other player
+      // moreover,  the lowest guaranteed result for one player is the best result for the other player,
+      // and vice versa, so the alpha and beta params are switched
+      const score = -this.alphaBetaScore(!isWhite, depth - 1, -beta, -alpha);
+
+      // undo the last move
+      this.game.undo();
+      // undo evaluation change
+      this.evaluator.setCurrentEval(currentWhiteEval);
+      // reset the piece counts
+      this.evaluator.setPieceCounts(currentPieceCounts);
+
+      if (score >= beta ) {
+        // if this condition is met, the other player already has a better move, so this branch is useless to calculate
+        return beta;
+      }
+      if (score > alpha ) {
+        // update the best result found so far
+        alpha = score; // alpha acts like max in MiniMax
+      }
+    }
+
+    // at this point, alpha is the evaluation of the best move found so far
+    return alpha;
+  }
+
+  alphaBetaNegamax(isWhite, alpha= -Infinity, beta= Infinity) {
+    // function body for searching for the best move
+
+    let currentWhiteEval = this.evaluator.getCurrentEval();
+    const currentPieceCounts = this.evaluator.getPieceCounts();
 
     let bestMove = null;
     let possibleMoves = this.game.moves({verbose: true});
@@ -200,34 +275,28 @@ export class Engine {
       // similarly, the alpha and beta parameters change signs for other player
       // moreover,  the lowest guaranteed result for one player is the best result for the other player,
       // and vice versa, so the alpha and beta params are switched
-      const score = -this.alphaBetaNegamax(!isWhite, -beta, -alpha, depthleft - 1 );
+      const score = -this.alphaBetaScore(!isWhite, this.depth - 1, -beta, -alpha);
 
       // undo the last move
       this.game.undo();
       // undo evaluation change
       this.evaluator.setCurrentEval(currentWhiteEval);
+      // reset the piece counts
+      this.evaluator.setPieceCounts(currentPieceCounts);
 
-      if (score >= beta ) {
-        // if this condition is met, the other player already has a better move, so this branch is useless to calculate
-        return beta;
-      }
-      if (score > alpha ) {
+      if (score > alpha) {
         // update the best result found so far
         alpha = score; // alpha acts like max in MiniMax
         bestMove = move;
       }
     }
 
-    if (depthleft === this.depth) {
-      return bestMove;
-    }
-
-    // at this point, alpha is the evaluation of the best move found so far
-    return alpha;
+    return bestMove;
 }
 
   quiescenceSearchAlphaBeta(isWhite, alpha, beta) {
     const currentWhiteEval = this.evaluator.getCurrentEval();
+    const currentPieceCounts = this.evaluator.getPieceCounts();
 
     const sign = isWhite ? 1 : -1;
     // standing pat: evaluate the position without any captures done
@@ -252,6 +321,13 @@ export class Engine {
     let captureMoves = this.game.moves({verbose: true})
       .filter(move => move.captured);
 
+    if (!captureMoves.length) {
+      if (this.game.isDraw() || this.game.isThreefoldRepetition() || this.game.isStalemate()) {
+        return 0;
+      }
+
+      return (isWhite ? 1 : -1) * currentWhiteEval;
+    }
     if (this.moveOrdering) {
       captureMoves = orderMoves(captureMoves);
     }
@@ -272,6 +348,8 @@ export class Engine {
       this.game.undo();
       // undo evaluation change
       this.evaluator.setCurrentEval(currentWhiteEval);
+      // reset the piece counts
+      this.evaluator.setPieceCounts(currentPieceCounts);
 
       if (score >= beta) {
         // if this condition is met, the other player already has a better move, so this branch is useless to calculate
@@ -290,9 +368,11 @@ export class Engine {
     this.evaluator.updateEval(move, isPlayerMove ? !this.isWhite : this.isWhite);
   }
 
-  makeMove() {
+  makeMove = () => {
     // game over state
-    if (this.game.game_over()) return;
+    if (this.game.game_over()) {
+      return;
+    }
 
     let computerMove;
     if (this.alphaBeta) {
@@ -309,5 +389,6 @@ export class Engine {
   logMove(player) {
     console.log(`${player}: `, this.game.history().at(-1));
     console.log(`${player} Eval update: `, this.evaluator.getCurrentEval());
+    console.log(`${player} Piece counts update: `, this.evaluator.getPieceCounts(false));
   }
 }
