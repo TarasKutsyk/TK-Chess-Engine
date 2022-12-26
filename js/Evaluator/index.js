@@ -1,7 +1,8 @@
 import {PieceSquareTables, PieceValues} from '../';
 
 export class Evaluator {
-  constructor(pieceActivityFactor) {
+  constructor(pieceActivityFactor, game) {
+    this.game = game;
     this.currentEval = 0;
 
     this.pieceSquareTable = this.normalizeSquareTables(pieceActivityFactor);
@@ -84,31 +85,36 @@ export class Evaluator {
   }
 
   updateEval(lastMove, isWhite) {
-    // start with accounting the gain from moving the last piece to its square
+    // check if the game is a draw
+    if (this.isDraw()) {
+      this.currentEval = 0;
+      return this.currentEval;
+    }
+    // check for checkmate
+    if (this.game.in_checkmate()) {
+      this.currentEval = (isWhite ? 1: -1) * PieceValues.k;
+      return this.currentEval;
+    }
+
+    // account for the gain from moving the last piece to its square (using piece-square tables)
     let evalChange = this.pieceActivityGain(lastMove, isWhite);
 
-    // check for checkmate
-    if (lastMove.san.includes('#'))
-    {
-      evalChange += PieceValues.k;
-    } else {
-      // check for pawn promotion
-      if (lastMove.promotion) {
-        evalChange += PieceValues[lastMove.promotion];
+    // check for pawn promotion
+    if (lastMove.promotion) {
+      evalChange += PieceValues[lastMove.promotion];
 
-        this.pieceCounts[lastMove.promotion][this.getSideIndex(isWhite)] += 1;
-      }
+      this.pieceCounts[lastMove.promotion][this.getSideIndex(isWhite)] += 1;
+    }
 
-      if (lastMove.captured) {
-        // update eval based on the captured piece
-        evalChange += PieceValues[lastMove.captured];
-        // update piece counts (for the opponent)
-        if (lastMove.captured !== 'p') {
-          this.pieceCounts[lastMove.captured][this.getSideIndex(!isWhite)] -= 1;
-        }
-        // account for piece activity when capturing pieces
-        evalChange += this.getSquareValue(lastMove.captured, lastMove.to, !isWhite);
+    if (lastMove.captured) {
+      // update eval based on the captured piece
+      evalChange += PieceValues[lastMove.captured];
+      // update piece counts (for the opponent)
+      if (lastMove.captured !== 'p') {
+        this.pieceCounts[lastMove.captured][this.getSideIndex(!isWhite)] -= 1;
       }
+      // account for piece activity when capturing pieces
+      evalChange += this.getSquareValue(lastMove.captured, lastMove.to, !isWhite);
     }
 
     // update the evaluation from the white's perspective
@@ -193,5 +199,9 @@ export class Evaluator {
     }
 
     return true;
+  }
+
+  isDraw() {
+    return this.game.in_draw() || this.game.in_threefold_repetition() || this.game.in_stalemate();
   }
 }

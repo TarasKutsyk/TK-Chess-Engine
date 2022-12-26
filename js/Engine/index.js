@@ -8,7 +8,7 @@ export class Engine {
               moveOrdering = true) {
     this.depth = depth;
     this.game = game;
-    this.evaluator = new Evaluator(0.01);
+    this.evaluator = new Evaluator(0.01, game);
 
     this.isWhite = isWhite;
     this.alphaBeta = alphaBeta;
@@ -27,6 +27,7 @@ export class Engine {
       if (this.quiescence) {
         return this.quiescenceSearch(isWhite);
       }
+
       return currentEval;
     }
 
@@ -37,10 +38,6 @@ export class Engine {
     // generate all the legal moves, using chess.js
     const possibleMoves = this.game.moves({verbose: true});
     if (!possibleMoves.length) {
-      if (this.game.isDraw() || this.game.isThreefoldRepetition() || this.game.isStalemate()) {
-        return 0;
-      }
-
       return currentEval;
     }
     // loop over all legal moves
@@ -85,10 +82,6 @@ export class Engine {
     const currentPieceCounts = this.evaluator.getPieceCounts();
 
     if (!captureMoves.length) {
-      if (this.game.isDraw() || this.game.isThreefoldRepetition() || this.game.isStalemate()) {
-        return 0;
-      }
-
       return currentEval;
     }
 
@@ -131,10 +124,6 @@ export class Engine {
     let possibleMoves = this.game.moves({verbose: true});
 
     if (!possibleMoves.length) {
-      if (this.game.isDraw() || this.game.isThreefoldRepetition() || this.game.isStalemate()) {
-        return 0;
-      }
-
       return currentEval;
     }
     // Use move ordering (by default) to order moves from more likely to be good, to less likely
@@ -189,8 +178,8 @@ export class Engine {
     return bestMoveEval;
   }
 
+  // function for calculating moves evaluation
   alphaBetaScore(isWhite, depth, alpha, beta)  {
-    // function for calculating top-level moves evaluation (rather than returning the best move, like the one below does)
     let currentWhiteEval = this.evaluator.getCurrentEval();
     const currentPieceCounts = this.evaluator.getPieceCounts();
 
@@ -207,10 +196,6 @@ export class Engine {
     let possibleMoves = this.game.moves({verbose: true});
 
     if (!possibleMoves.length) {
-      if (this.game.isDraw() || this.game.isThreefoldRepetition() || this.game.isStalemate()) {
-        return 0;
-      }
-
       return (isWhite ? 1 : -1) * currentWhiteEval;
     }
     // Use move ordering (by default) to order moves from more likely to be good, to less likely
@@ -251,9 +236,8 @@ export class Engine {
     return alpha;
   }
 
+  // function for searching for the best move
   alphaBetaNegamax(isWhite, alpha= -Infinity, beta= Infinity) {
-    // function body for searching for the best move
-
     let currentWhiteEval = this.evaluator.getCurrentEval();
     const currentPieceCounts = this.evaluator.getPieceCounts();
 
@@ -322,10 +306,6 @@ export class Engine {
       .filter(move => move.captured);
 
     if (!captureMoves.length) {
-      if (this.game.isDraw() || this.game.isThreefoldRepetition() || this.game.isStalemate()) {
-        return 0;
-      }
-
       return (isWhite ? 1 : -1) * currentWhiteEval;
     }
     if (this.moveOrdering) {
