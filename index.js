@@ -21,4 +21,5 @@ function init(e) {
   const engine = new Engine(game, !isPlayerWhite, depth, useAlphaBeta, useQuiescence);
 
   const boardManager = new BoardManager(isPlayerWhite, game, engine);
+  boardManager.hideGameResults();
 }

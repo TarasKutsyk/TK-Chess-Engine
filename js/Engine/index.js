@@ -351,7 +351,7 @@ export class Engine {
   makeMove = () => {
     // game over state
     if (this.game.game_over()) {
-      return;
+      return false;
     }
 
     let computerMove;
@@ -364,6 +364,8 @@ export class Engine {
 
     this.game.move(computerMove);
     this.updateEval(computerMove);
+
+    return true;
   }
 
   logMove(player) {
