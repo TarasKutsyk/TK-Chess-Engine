@@ -1,6 +1,4 @@
-import {Engine, BoardManager} from './js/index.js'
-
-console.log('index.js')
+import {Engine, BoardManager} from './js/index'
 
 let form = document.forms.UserPrefs;
 form.onsubmit = init;
