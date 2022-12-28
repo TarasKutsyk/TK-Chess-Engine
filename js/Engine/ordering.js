@@ -1,4 +1,4 @@
-import {PieceValues} from '../'
+import {PieceValues} from '../index.js'
 
 export const orderMoves = (moves) => {
   const compareMoves = (a, b) => {

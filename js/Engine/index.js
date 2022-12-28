@@ -1,5 +1,5 @@
-import {Evaluator} from "../Evaluator/index";
-import {orderMoves} from "../index"
+import {Evaluator} from "../Evaluator/index.js";
+import {orderMoves} from "../index.js"
 
 export class Engine {
   constructor(game, isWhite, depth = 1,

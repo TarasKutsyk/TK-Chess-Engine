@@ -1,4 +1,4 @@
-import {PieceSquareTables, PieceValues} from '../index';
+import {PieceSquareTables, PieceValues} from '../index.js';
 
 export class Evaluator {
   constructor(pieceActivityFactor, game) {
