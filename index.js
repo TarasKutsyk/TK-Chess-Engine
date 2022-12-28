@@ -1,4 +1,4 @@
-import {Engine, BoardManager} from './js'
+import {Engine, BoardManager} from './js/index.js'
 
 console.log('index.js')
 
