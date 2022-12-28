@@ -6,7 +6,6 @@ export class Evaluator {
     this.currentEval = 0;
 
     this.pieceSquareTable = this.normalizeSquareTables(pieceActivityFactor);
-    console.log(this.pieceSquareTable)
     this.pieceCounts = this.initializePieceCounts();
 
     // store for performance
